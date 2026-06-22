@@ -33,17 +33,33 @@ def _get_portfolio_stats() -> dict:
         ).fetchone()
     annual_income = float(row["total"]) if row else 0.0
 
-    # If no received dividends, estimate from dividend events
+    # If no received dividends, estimate from annual_yield or dividend events
     if annual_income == 0.0:
-        with db() as conn:
-            rows_de = conn.execute(
-                """SELECT de.amount_per_unit, p.units
-                   FROM dividend_events de JOIN positions p ON p.id=de.position_id
-                   WHERE de.ex_date >= ?""",
-                (cutoff,),
-            ).fetchall()
-        for r in rows_de:
-            annual_income += r["amount_per_unit"] * r["units"]
+        for pos in rows:
+            ay = pos.get("annual_yield")
+            units = pos.get("units", 0)
+            price = pos.get("last_price", 0)
+            
+            if ay is not None and price:
+                annual_income += ay * (units * price)
+            else:
+                with db() as conn:
+                    rows_de = conn.execute(
+                        """SELECT amount_per_unit FROM dividend_events
+                           WHERE position_id = ? AND ex_date >= ?""",
+                        (pos["id"], cutoff),
+                    ).fetchall()
+                for r in rows_de:
+                    amt = r["amount_per_unit"]
+                    native_ccy = pos.get("native_currency") or "GBP"
+                    
+                    if native_ccy in ("GBp", "GBX"):
+                        if price and amt > price * 0.2:
+                            amt = amt / 100
+                        elif not price and amt > 1.0:
+                            amt = amt / 100
+                            
+                    annual_income += amt * units
 
     return {
         "total_value": round(total_value, 2),

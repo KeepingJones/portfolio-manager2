@@ -64,7 +64,7 @@ def project_future_payments(
     position: dict,
     events: list[dict],
     frequency: str,
-    horizon_months: int = 13,
+    horizon_months: int = 12,
 ) -> list[dict]:
     """
     Project expected dividend payments for the next horizon_months months.

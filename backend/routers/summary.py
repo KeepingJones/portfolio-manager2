@@ -46,13 +46,35 @@ def get_summary():
         ).fetchone()
     income_ttm = float(row["total"]) if row else 0.0
 
-    with db() as conn:
-        rows_de = conn.execute(
-            """SELECT de.amount_per_unit, p.units FROM dividend_events de
-               JOIN positions p ON p.id=de.position_id WHERE de.ex_date >= ?""",
-            (cutoff,),
-        ).fetchall()
-    projected_income = sum(r["amount_per_unit"] * r["units"] for r in rows_de)
+    projected_income = 0.0
+    for pos in rows:
+        ay = pos.get("annual_yield")
+        units = pos.get("units", 0)
+        price = pos.get("last_price", 0)
+        
+        # Prefer the explicit annual yield for the most accurate 12m projection
+        if ay is not None and price:
+            projected_income += ay * (units * price)
+        else:
+            # Fallback for positions with no yield: query their historical events
+            with db() as conn:
+                rows_de = conn.execute(
+                    """SELECT amount_per_unit, currency FROM dividend_events
+                       WHERE position_id = ? AND ex_date >= ?""",
+                    (pos["id"], cutoff),
+                ).fetchall()
+                
+            for r in rows_de:
+                amt = r["amount_per_unit"]
+                native_ccy = pos.get("native_currency") or "GBP"
+                
+                if native_ccy in ("GBp", "GBX"):
+                    if price and amt > price * 0.2:
+                        amt = amt / 100
+                    elif not price and amt > 1.0:
+                        amt = amt / 100
+                        
+                projected_income += amt * units
 
     annual_income_est = income_ttm if income_ttm > 0 else round(projected_income, 2)
 

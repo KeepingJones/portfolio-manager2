@@ -16,6 +16,7 @@
     <div class="nav-item" data-page="portfolio"><span class="icon">≡</span> Holdings</div>
     <div class="nav-item" data-page="income"><span class="icon">₤</span> Income</div>
     <div class="nav-item" data-page="projections"><span class="icon">↗</span> Projections</div>
+    <div class="nav-item" data-page="settings"><span class="icon">⚙</span> Settings</div>
   </nav>
   <div class="sidebar-footer">
     <button class="btn" style="width:100%;justify-content:center" id="importT212Btn">⬇ Import T212</button>
@@ -27,6 +28,12 @@
   <header class="topbar">
     <span class="topbar-title">Portfolio Manager</span>
     <div class="topbar-right">
+      <div class="auto-refresh-wrap">
+        <span style="font-size:12px;color:var(--muted)">Profile:</span>
+        <select id="profileSelect" style="width:120px;margin-right:12px">
+          <option value="default">Default</option>
+        </select>
+      </div>
       <span class="last-updated" id="last-updated"></span>
       <span class="auto-refresh-wrap" title="Auto-refresh interval">
         <label for="autoRefreshSelect" style="font-size:12px;color:var(--muted)">Auto</label>
@@ -297,6 +304,28 @@
       </div>
     </div>
 
+    <!-- ── SETTINGS ───────────────────────────────────────── -->
+    <div class="page" id="page-settings">
+      <div class="section-header">
+        <h2>Settings & Portfolios</h2>
+      </div>
+      <div class="card-grid" style="grid-template-columns: 1fr; max-width: 600px;">
+        <div class="card">
+          <div class="card-label" style="margin-bottom:12px">Manage Portfolios</div>
+          <div class="table-wrap" style="margin-bottom: 16px;">
+            <table>
+              <thead><tr><th>Portfolio Name</th><th>Internal ID</th><th>Actions</th></tr></thead>
+              <tbody id="profiles-tbody"></tbody>
+            </table>
+          </div>
+          <div class="form-row-2">
+             <div><input id="new-profile-name" type="text" placeholder="New Portfolio Name (e.g. My ISA)"></div>
+             <div><button class="btn btn-primary" onclick="createNewProfile()" style="width:100%;justify-content:center">+ Create Portfolio</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -469,7 +498,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="/js/api.js?v=2"></script>
-<script src="/js/app.js?v=2"></script>
+<script src="/js/api.js?v=3"></script>
+<script src="/js/app.js?v=3"></script>
 </body>
 </html>

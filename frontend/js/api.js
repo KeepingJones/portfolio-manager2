@@ -1,6 +1,11 @@
 const API = {
   async _fetch(url, opts = {}) {
-    const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const profile = localStorage.getItem('portfolio_profile') || 'default';
+    const headers = { 
+        'Content-Type': 'application/json',
+        'X-Profile': profile
+    };
+    const r = await fetch(url, { headers: headers, ...opts });
     if (!r.ok) {
       const err = await r.json().catch(() => ({ detail: r.statusText }));
       throw new Error(err.detail || r.statusText);
@@ -46,4 +51,10 @@ const API = {
   // Settings
   getSettings: () => API._fetch('/api/settings'),
   updateSettings: (data) => API._fetch('/api/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Profiles
+  getProfiles: () => API._fetch('/api/profiles'),
+  createProfile: (id, name) => API._fetch('/api/profiles', { method: 'POST', body: JSON.stringify({ id, name }) }),
+  updateProfile: (id, name) => API._fetch(`/api/profiles/${id}`, { method: 'PUT', body: JSON.stringify({ id, name }) }),
+  deleteProfile: (id) => API._fetch(`/api/profiles/${id}`, { method: 'DELETE' }),
 };

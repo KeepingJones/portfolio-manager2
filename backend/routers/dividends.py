@@ -58,7 +58,7 @@ def _upsert_dividend_events(conn, position_id: int, position_currency: str, data
 def list_dividend_events():
     with db() as conn:
         rows = conn.execute(
-            """SELECT de.*, p.name as position_name, p.units
+            """SELECT de.*, p.name as position_name, p.units, p.native_currency, p.last_price
                FROM dividend_events de
                JOIN positions p ON p.id = de.position_id
                ORDER BY de.ex_date DESC NULLS LAST"""
@@ -66,6 +66,16 @@ def list_dividend_events():
     result = []
     for r in rows:
         d = dict(r)
+        amt = d["amount_per_unit"]
+        native_ccy = d.get("native_currency") or "GBP"
+        last_price = d.get("last_price")
+        if amt and native_ccy in ("GBp", "GBX"):
+            if last_price and amt > last_price * 0.2:
+                amt = amt / 100
+            elif not last_price and amt > 1.0:
+                amt = amt / 100
+            d["amount_per_unit"] = amt
+            
         d["projected_total"] = round(d["units"] * d["amount_per_unit"], 2) if d["amount_per_unit"] else None
         result.append(d)
     return result
@@ -76,7 +86,7 @@ def upcoming_dividends():
     today = date.today().isoformat()
     with db() as conn:
         rows = conn.execute(
-            """SELECT de.*, p.name as position_name, p.units
+            """SELECT de.*, p.name as position_name, p.units, p.native_currency, p.last_price
                FROM dividend_events de
                JOIN positions p ON p.id = de.position_id
                WHERE de.ex_date >= ? OR de.pay_date >= ?
@@ -86,6 +96,16 @@ def upcoming_dividends():
     result = []
     for r in rows:
         d = dict(r)
+        amt = d["amount_per_unit"]
+        native_ccy = d.get("native_currency") or "GBP"
+        last_price = d.get("last_price")
+        if amt and native_ccy in ("GBp", "GBX"):
+            if last_price and amt > last_price * 0.2:
+                amt = amt / 100
+            elif not last_price and amt > 1.0:
+                amt = amt / 100
+            d["amount_per_unit"] = amt
+            
         d["projected_total"] = round(d["units"] * d["amount_per_unit"], 2) if d["amount_per_unit"] else None
         result.append(d)
     return result

@@ -10,6 +10,7 @@ const S = {
   charts: {},
   sort: { col: "name", dir: 1 },
   filter: "",
+  profiles: [],
 };
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -71,14 +72,16 @@ function navigate(page) {
 // ── Data loading ───────────────────────────────────────────────────────────
 async function loadAll() {
   try {
-    [S.positions, S.summary, S.dividendEvents, S.upcoming, S.received, S.settings] = await Promise.all([
+    [S.positions, S.summary, S.dividendEvents, S.upcoming, S.received, S.settings, S.profiles] = await Promise.all([
       API.getPositions(),
       API.getSummary(),
       API.getDividendEvents(),
       API.getUpcomingDividends(),
       API.getReceivedDividends(),
       API.getSettings().catch(() => ({ cash_balance: 0 })),
+      API.getProfiles().catch(() => ([{id: 'default', name: 'Default'}])),
     ]);
+    renderProfilesUI();
   } catch (e) {
     notify('Failed to load data: ' + e.message, 'error');
   }
@@ -741,6 +744,70 @@ function _priceAgeClass(isoStr) {
   return 'price-fresh';
 }
 
+// ── Profiles & Settings ──────────────────────────────────────────────────
+function renderProfilesUI() {
+  const profileId = localStorage.getItem('portfolio_profile') || 'default';
+  const sel = document.getElementById('profileSelect');
+  if (sel) {
+    sel.innerHTML = S.profiles.map(p => `<option value="${p.id}" ${p.id === profileId ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  }
+
+  const tbody = document.getElementById('profiles-tbody');
+  if (tbody) {
+    tbody.innerHTML = S.profiles.map(p => `<tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td style="color:var(--muted)">${p.id}</td>
+      <td>
+        <button class="btn btn-sm" onclick="renameProfile('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">✎ Rename</button>
+        ${p.id !== 'default' ? `<button class="btn btn-sm btn-danger" onclick="deleteProfile('${p.id}')">✕</button>` : ''}
+      </td>
+    </tr>`).join('');
+  }
+}
+
+async function createNewProfile() {
+  const input = document.getElementById('new-profile-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const id = name.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!id) { notify('Invalid name', 'error'); return; }
+  try {
+    await API.createProfile(id, name);
+    input.value = '';
+    S.profiles = await API.getProfiles();
+    renderProfilesUI();
+    notify('Portfolio created');
+  } catch (e) { notify(e.message, 'error'); }
+}
+
+async function renameProfile(id, currentName) {
+  const name = prompt('Enter new portfolio name:', currentName);
+  if (!name || name.trim() === currentName) return;
+  try {
+    await API.updateProfile(id, name.trim());
+    S.profiles = await API.getProfiles();
+    renderProfilesUI();
+    notify('Portfolio renamed');
+  } catch (e) { notify(e.message, 'error'); }
+}
+
+async function deleteProfile(id) {
+  if (id === 'default') return;
+  if (!confirm(`Are you sure you want to permanently delete portfolio "${id}"? This will delete all its holdings, prices, and history.`)) return;
+  try {
+    await API.deleteProfile(id);
+    const active = localStorage.getItem('portfolio_profile');
+    if (active === id) {
+      localStorage.setItem('portfolio_profile', 'default');
+      window.location.reload();
+    } else {
+      S.profiles = await API.getProfiles();
+      renderProfilesUI();
+      notify('Portfolio deleted');
+    }
+  } catch (e) { notify(e.message, 'error'); }
+}
+
 // ── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => navigate(el.dataset.page)));
@@ -789,6 +856,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     S.filter = e.target.value;
     renderPortfolio();
   });
+
+  // Profile selector
+  const profileSel = document.getElementById('profileSelect');
+  if (profileSel) {
+    profileSel.addEventListener('change', (e) => {
+      localStorage.setItem('portfolio_profile', e.target.value);
+      window.location.reload();
+    });
+  }
 
   // Auto-refresh selector
   const arSel = document.getElementById('autoRefreshSelect');
