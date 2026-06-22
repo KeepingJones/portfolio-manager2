@@ -12,13 +12,14 @@ def _auth_header(api_key: str, api_secret: str = None) -> str:
 
 
 class T212Client:
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, api_secret: str = None):
         key = api_key or T212_API_KEY
+        secret = api_secret or T212_API_SECRET
         if not key:
             raise ValueError("No T212 API key provided")
         self._http = httpx.Client(
             base_url=T212_BASE_URL,
-            headers={"Authorization": _auth_header(key, T212_API_SECRET if not api_key else None)},
+            headers={"Authorization": _auth_header(key, secret)},
             timeout=30.0,
         )
 

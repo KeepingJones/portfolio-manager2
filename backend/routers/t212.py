@@ -11,13 +11,15 @@ def preview_t212():
     """Preview T212 portfolio without importing."""
     with db() as conn:
         api_key_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_key'").fetchone()
+        api_secret_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_secret'").fetchone()
         api_key = api_key_row["value"] if api_key_row else None
+        api_secret = api_secret_row["value"] if api_secret_row else None
         
     if not api_key:
         raise HTTPException(400, "Trading 212 API key not configured for this portfolio")
         
     try:
-        client = T212Client(api_key=api_key)
+        client = T212Client(api_key=api_key, api_secret=api_secret)
         positions = client.get_portfolio()
         instruments = {i["ticker"]: i for i in client.get_instruments()}
         client.close()
@@ -46,13 +48,15 @@ def import_from_t212():
     """Sync T212 positions into portfolio. Adds new, updates existing, and marks missing as closed."""
     with db() as conn:
         api_key_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_key'").fetchone()
+        api_secret_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_secret'").fetchone()
         api_key = api_key_row["value"] if api_key_row else None
+        api_secret = api_secret_row["value"] if api_secret_row else None
         
     if not api_key:
         raise HTTPException(400, "Trading 212 API key not configured for this portfolio")
 
     try:
-        client = T212Client(api_key=api_key)
+        client = T212Client(api_key=api_key, api_secret=api_secret)
         positions = client.get_portfolio()
         instruments = {i["ticker"]: i for i in client.get_instruments()}
         client.close()
