@@ -12,7 +12,7 @@ Write-Host "========================================="
 Write-Host ""
 
 # 1. Determine Installation Directory
-$defaultInstallDir = Join-Path $HOME "portfolio-manager"
+$defaultInstallDir = Join-Path $PWD "portfolio-manager"
 $installDir = Read-Host "Enter installation path (Press Enter for default: $defaultInstallDir)"
 if ([string]::IsNullOrWhiteSpace($installDir)) {
     $installDir = $defaultInstallDir
