@@ -12,14 +12,16 @@ def preview_t212():
     with db() as conn:
         api_key_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_key'").fetchone()
         api_secret_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_secret'").fetchone()
+        env_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_environment'").fetchone()
         api_key = api_key_row["value"] if api_key_row else None
         api_secret = api_secret_row["value"] if api_secret_row else None
+        environment = env_row["value"] if env_row else "live"
         
     if not api_key:
         raise HTTPException(400, "Trading 212 API key not configured for this portfolio")
         
     try:
-        client = T212Client(api_key=api_key, api_secret=api_secret)
+        client = T212Client(api_key=api_key, api_secret=api_secret, environment=environment)
         positions = client.get_portfolio()
         instruments = {i["ticker"]: i for i in client.get_instruments()}
         client.close()
@@ -49,14 +51,16 @@ def import_from_t212():
     with db() as conn:
         api_key_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_key'").fetchone()
         api_secret_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_api_secret'").fetchone()
+        env_row = conn.execute("SELECT value FROM portfolio_settings WHERE key='t212_environment'").fetchone()
         api_key = api_key_row["value"] if api_key_row else None
         api_secret = api_secret_row["value"] if api_secret_row else None
+        environment = env_row["value"] if env_row else "live"
         
     if not api_key:
         raise HTTPException(400, "Trading 212 API key not configured for this portfolio")
 
     try:
-        client = T212Client(api_key=api_key, api_secret=api_secret)
+        client = T212Client(api_key=api_key, api_secret=api_secret, environment=environment)
         positions = client.get_portfolio()
         instruments = {i["ticker"]: i for i in client.get_instruments()}
         client.close()

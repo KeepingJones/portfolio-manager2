@@ -12,13 +12,16 @@ def _auth_header(api_key: str, api_secret: str = None) -> str:
 
 
 class T212Client:
-    def __init__(self, api_key: str = None, api_secret: str = None):
+    def __init__(self, api_key: str = None, api_secret: str = None, environment: str = "live"):
         key = api_key or T212_API_KEY
         secret = api_secret or T212_API_SECRET
         if not key:
             raise ValueError("No T212 API key provided")
+            
+        base_url = "https://live.trading212.com/api/v0" if environment == "live" else "https://demo.trading212.com/api/v0"
+        
         self._http = httpx.Client(
-            base_url=T212_BASE_URL,
+            base_url=base_url,
             headers={"Authorization": _auth_header(key, secret)},
             timeout=30.0,
         )

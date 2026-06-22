@@ -91,6 +91,9 @@ async function loadAll() {
     if (S.settings.t212_api_secret) {
       document.getElementById('setting-t212-api-secret').value = S.settings.t212_api_secret;
     }
+    if (S.settings.t212_environment) {
+      document.getElementById('setting-t212-environment').value = S.settings.t212_environment;
+    }
     if (S.settings.t212_api_secret) {
       document.getElementById('setting-t212-api-secret').value = S.settings.t212_api_secret;
     }
@@ -374,7 +377,8 @@ async function saveCash() {
     const ollama_model = S.settings.ollama_model || 'llama3';
     const t212_api_key = S.settings.t212_api_key || '';
     const t212_api_secret = S.settings.t212_api_secret || '';
-    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key, t212_api_secret });
+    const t212_environment = S.settings.t212_environment || 'live';
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key, t212_api_secret, t212_environment });
     notify(`Cash balance saved: ${fmt.gbp(val)}`);
     renderDashboard();
   } catch (e) { notify(e.message, 'error'); }
@@ -385,8 +389,9 @@ async function saveSettings() {
   const ollama_model = document.getElementById('setting-ollama-model').value;
   const t212_api_key = document.getElementById('setting-t212-api-key').value;
   const t212_api_secret = document.getElementById('setting-t212-api-secret').value;
+  const t212_environment = document.getElementById('setting-t212-environment').value;
   try {
-    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key, t212_api_secret });
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key, t212_api_secret, t212_environment });
     notify('Settings saved');
     renderDashboard();
   } catch (e) { notify(e.message, 'error'); }
