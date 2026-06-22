@@ -6,11 +6,22 @@ A self-hosted UK investment portfolio tracker with live pricing, dividend tracki
 
 ## Quick Start
 
+### 1. Setup Environment
+To setup the Python environment, install dependencies, and download the recommended AI model (Ollama + phi3.5), open a PowerShell terminal and run:
+
+```powershell
+.\setup.ps1
 ```
+*(Note: If you receive an execution policy error, you may need to run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` first).*
+
+### 2. Run Application
+Once setup is complete, you can launch the app anytime with:
+
+```cmd
 start.bat
 ```
 
-That's it. The script creates a virtualenv, installs dependencies, and opens `http://localhost:8080` in your browser. On subsequent runs it skips the install step.
+This will activate the environment, start the server, and open `http://localhost:8080` in your browser.
 
 To populate the app with some example holdings so you can test it out:
 
