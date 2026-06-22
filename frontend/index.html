@@ -20,7 +20,7 @@
     <div class="nav-item" data-page="settings"><span class="icon">⚙</span> Settings</div>
   </nav>
   <div class="sidebar-footer">
-    <button class="btn" style="width:100%;justify-content:center" id="importT212Btn">⬇ Import T212</button>
+    <button class="btn" style="width:100%;justify-content:center" id="importT212Btn">🔌 Sync T212</button>
   </div>
 </aside>
 
@@ -373,6 +373,20 @@
             </div>
           </div>
           <div style="text-align:right">
+            <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: 1fr; max-width: 600px; margin-top: 24px;">
+        <div class="card">
+          <div class="card-label" style="margin-bottom:12px">Trading 212 Configuration</div>
+          <div class="form-row">
+            <label>API Key (Beta)</label>
+            <input id="setting-t212-api-key" type="password" placeholder="Enter your T212 API Key">
+            <small style="color:var(--muted); font-size:12px;">Stored locally for this portfolio only. Generate in the Trading 212 app under Settings &gt; API (Beta).</small>
+          </div>
+          <div style="text-align:right; margin-top:16px;">
             <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
           </div>
         </div>

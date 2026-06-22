@@ -82,7 +82,12 @@ async function loadAll() {
       API.getProfiles().catch(() => ([{id: 'default', name: 'Default'}])),
     ]);
     renderProfilesUI();
-    document.getElementById('setting-ollama-url').value = S.settings.ollama_url || 'http://localhost:11434';
+    if (S.settings.ollama_url) {
+      document.getElementById('setting-ollama-url').value = S.settings.ollama_url;
+    }
+    if (S.settings.t212_api_key) {
+      document.getElementById('setting-t212-api-key').value = S.settings.t212_api_key;
+    }
     const savedModel = S.settings.ollama_model || 'llama3';
     const select = document.getElementById('setting-ollama-model');
     select.innerHTML = `<option value="${savedModel}">${savedModel}</option>`;
@@ -361,7 +366,8 @@ async function saveCash() {
     const cash = val;
     const ollama_url = S.settings.ollama_url || 'http://localhost:11434';
     const ollama_model = S.settings.ollama_model || 'llama3';
-    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model });
+    const t212_api_key = S.settings.t212_api_key || '';
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key });
     notify(`Cash balance saved: ${fmt.gbp(val)}`);
     renderDashboard();
   } catch (e) { notify(e.message, 'error'); }
@@ -370,8 +376,9 @@ async function saveSettings() {
   const cash = parseFloat(document.getElementById('cash-input').value) || 0;
   const ollama_url = document.getElementById('setting-ollama-url').value;
   const ollama_model = document.getElementById('setting-ollama-model').value;
+  const t212_api_key = document.getElementById('setting-t212-api-key').value;
   try {
-    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model });
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model, t212_api_key });
     notify('Settings saved');
     renderDashboard();
   } catch (e) { notify(e.message, 'error'); }
@@ -740,12 +747,21 @@ async function saveReceived() {
 
 // ── T212 Import ─────────────────────────────────────────────────────────────
 async function importT212() {
-  if (!confirm('Import all T212 positions? Existing T212-linked positions will be skipped.')) return;
+  if (!confirm('Sync with Trading 212? This will pull open positions, update sizes, and mark missing positions as closed.')) return;
+  const btn = document.getElementById('importT212Btn');
+  const ogText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Syncing...';
   try {
     const r = await API.importT212();
-    notify(`Imported ${r.imported}, skipped ${r.skipped}`);
+    notify(`T212 Sync: ${r.imported} added, ${r.updated} updated, ${r.closed} closed.`);
     await reload();
-  } catch (e) { notify(e.message, 'error'); }
+  } catch (e) { 
+    notify(e.message, 'error'); 
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = ogText;
+  }
 }
 
 // ── Global refresh ──────────────────────────────────────────────────────────

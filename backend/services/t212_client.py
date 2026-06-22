@@ -4,18 +4,21 @@ from typing import Optional
 from config import T212_API_KEY, T212_API_SECRET, T212_BASE_URL
 
 
-def _auth_header() -> str:
-    if T212_API_SECRET:
-        encoded = base64.b64encode(f"{T212_API_KEY}:{T212_API_SECRET}".encode()).decode()
+def _auth_header(api_key: str, api_secret: str = None) -> str:
+    if api_secret:
+        encoded = base64.b64encode(f"{api_key}:{api_secret}".encode()).decode()
         return f"Basic {encoded}"
-    return T212_API_KEY
+    return api_key
 
 
 class T212Client:
-    def __init__(self):
+    def __init__(self, api_key: str = None):
+        key = api_key or T212_API_KEY
+        if not key:
+            raise ValueError("No T212 API key provided")
         self._http = httpx.Client(
             base_url=T212_BASE_URL,
-            headers={"Authorization": _auth_header()},
+            headers={"Authorization": _auth_header(key, T212_API_SECRET if not api_key else None)},
             timeout=30.0,
         )
 
