@@ -20,6 +20,10 @@ class PositionIn(BaseModel):
     category: str = "growth"
     notes: Optional[str] = None
     annual_yield: Optional[float] = None
+    purchase_date: Optional[str] = None
+    status: str = "open"
+    sell_date: Optional[str] = None
+    sell_price: Optional[float] = None
 
 
 def _row_to_dict(row) -> dict:
@@ -29,17 +33,53 @@ def _row_to_dict(row) -> dict:
     total_book = round(units * book, 2)
     d["total_book_cost"] = total_book
 
-    gbp_price = d.get("last_price")
-    if gbp_price is not None:
-        current_value = round(units * gbp_price, 2)
-        pnl = round(current_value - total_book, 2)
-        pnl_pct = round((pnl / total_book * 100), 2) if total_book else 0.0
+    status = d.get("status", "open")
+    
+    if status == "closed" and d.get("sell_price") is not None:
+        current_value = round(units * d["sell_price"], 2)
+        realised_pnl = round(current_value - total_book, 2)
+        realised_pnl_pct = round((realised_pnl / total_book * 100), 2) if total_book else 0.0
+        pnl = None
+        pnl_pct = None
+        end_date = d.get("sell_date")
     else:
-        current_value = pnl = pnl_pct = None
+        gbp_price = d.get("last_price")
+        if gbp_price is not None:
+            current_value = round(units * gbp_price, 2)
+            pnl = round(current_value - total_book, 2)
+            pnl_pct = round((pnl / total_book * 100), 2) if total_book else 0.0
+        else:
+            current_value = pnl = pnl_pct = None
+        realised_pnl = realised_pnl_pct = None
+        end_date = None
 
     d["current_value"] = current_value
     d["unrealised_pnl"] = pnl
     d["unrealised_pnl_pct"] = pnl_pct
+    d["realised_pnl"] = realised_pnl
+    d["realised_pnl_pct"] = realised_pnl_pct
+
+    cagr = None
+    if current_value is not None and total_book > 0:
+        start_date_str = d.get("purchase_date") or d.get("created_at")
+        if start_date_str:
+            try:
+                # Remove Z and fractional seconds to parse safely
+                clean_str = start_date_str.split(".")[0].replace("Z", "")
+                start_dt = datetime.fromisoformat(clean_str).replace(tzinfo=None)
+                
+                if end_date:
+                    end_clean = end_date.split(".")[0].replace("Z", "")
+                    end_dt = datetime.fromisoformat(end_clean).replace(tzinfo=None)
+                else:
+                    end_dt = datetime.now().replace(tzinfo=None)
+                
+                days = (end_dt - start_dt).days
+                years = max(days / 365.25, 1.0) # floor to 1 year to avoid inflated annualized returns for short-term holds
+                cagr = ((current_value / total_book) ** (1 / years)) - 1
+            except Exception:
+                pass
+    d["cagr"] = round(cagr, 4) if cagr is not None else None
     # Ensure these keys exist even if columns are absent (old DB)
     d.setdefault("native_price", None)
     d.setdefault("native_currency", None)
@@ -72,11 +112,12 @@ def create_position(body: PositionIn):
         cur = conn.execute(
             """INSERT INTO positions
                (name,isin,ticker,asset_type,units,book_cost_per_unit,currency,
-                native_currency,t212_ticker,category,notes,annual_yield,created_at,updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                native_currency,t212_ticker,category,notes,annual_yield,purchase_date,status,sell_date,sell_price,created_at,updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (body.name, body.isin, body.ticker, body.asset_type, body.units,
              body.book_cost_per_unit, body.currency, body.native_currency,
-             body.t212_ticker, body.category, body.notes, body.annual_yield, now, now),
+             body.t212_ticker, body.category, body.notes, body.annual_yield, body.purchase_date,
+             body.status, body.sell_date, body.sell_price, now, now),
         )
         row = conn.execute("SELECT * FROM positions WHERE id=?", (cur.lastrowid,)).fetchone()
     return _row_to_dict(row)
@@ -92,11 +133,13 @@ def update_position(position_id: int, body: PositionIn):
         conn.execute(
             """UPDATE positions SET
                name=?,isin=?,ticker=?,asset_type=?,units=?,book_cost_per_unit=?,
-               currency=?,native_currency=?,t212_ticker=?,category=?,notes=?,annual_yield=?,updated_at=?
+               currency=?,native_currency=?,t212_ticker=?,category=?,notes=?,annual_yield=?,purchase_date=?,
+               status=?,sell_date=?,sell_price=?,updated_at=?
                WHERE id=?""",
             (body.name, body.isin, body.ticker, body.asset_type, body.units,
              body.book_cost_per_unit, body.currency, body.native_currency,
-             body.t212_ticker, body.category, body.notes, body.annual_yield, now, position_id),
+             body.t212_ticker, body.category, body.notes, body.annual_yield, body.purchase_date,
+             body.status, body.sell_date, body.sell_price, now, position_id),
         )
         row = conn.execute("SELECT * FROM positions WHERE id=?", (position_id,)).fetchone()
     return _row_to_dict(row)

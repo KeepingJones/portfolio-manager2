@@ -132,8 +132,15 @@ function renderDashboard() {
   const invested = s.total_current_value ?? 0;
   document.getElementById('overview-invested').textContent = fmt.gbp(invested);
   document.getElementById('overview-cash').textContent = fmt.gbp(cash);
+  document.getElementById('overview-cg').textContent = (cg >= 0 ? '+' : '') + fmt.gbp(cg);
+  document.getElementById('overview-cg').className = 'split-row-val ' + fmt.pnlClass(cg);
   document.getElementById('overview-total').textContent = fmt.gbp(invested + cash);
   document.getElementById('cash-input').value = cash.toFixed(2);
+  
+  const cagr = s.historical_cagr;
+  const cagrStr = cagr != null ? (cagr >= 0 ? '+' : '') + (cagr * 100).toFixed(2) + '%' : '—';
+  document.getElementById('overview-cagr').textContent = cagrStr;
+  document.getElementById('overview-cagr').className = 'split-row-val ' + fmt.pnlClass(cagr);
 
   renderAllocationChart(s.by_asset_type || {});
   renderReturnChart(s);
@@ -180,6 +187,10 @@ function renderReturnChart(s) {
 // ── Portfolio table ─────────────────────────────────────────────────────────
 function getSortedFiltered() {
   let rows = [...S.positions];
+  const showClosed = document.getElementById('toggle-closed-positions').checked;
+  if (!showClosed) {
+    rows = rows.filter(p => p.status !== 'closed');
+  }
   const f = S.filter.toLowerCase();
   if (f) {
     rows = rows.filter(p =>
@@ -228,19 +239,26 @@ function renderPortfolio() {
   }
 
   tbody.innerHTML = rows.map(p => {
-    const pnl = p.unrealised_pnl;
-    const pnlPct = p.unrealised_pnl_pct;
+    const isClosed = p.status === 'closed';
+    const pnl = isClosed ? p.realised_pnl : p.unrealised_pnl;
+    const pnlPct = isClosed ? p.realised_pnl_pct : p.unrealised_pnl_pct;
     const pnlClass = fmt.pnlClass(pnl);
     const pnlStr = pnl != null ? (pnl >= 0 ? '+' : '') + fmt.gbp(pnl) : '—';
     const pnlPctStr = pnlPct != null ? (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%' : '—';
+    
+    const cagr = p.cagr;
+    const cagrClass = fmt.pnlClass(cagr);
+    const cagrStr = cagr != null ? (cagr >= 0 ? '+' : '') + (cagr * 100).toFixed(2) + '%' : '—';
+    
     const nativeCcy = p.native_currency;
     const showFx = nativeCcy && nativeCcy !== 'GBP';
-    return `<tr>
+    return `<tr style="opacity: ${isClosed ? '0.6' : '1'}">
       <td>
-        <strong>${esc(p.name)}</strong><br>
+        <strong>${esc(p.name)}</strong>${isClosed ? ' <span class="badge badge-bond">CLOSED</span>' : ''}<br>
         <span style="color:var(--muted);font-size:11px">${esc(p.isin || '')}${p.ticker ? ' · ' + esc(p.ticker) : ''}</span>
       </td>
       <td><span class="badge badge-${p.asset_type}">${p.asset_type.replace(/_/g,' ')}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${p.purchase_date || '—'}</td>
       <td>${fmt.num(p.units, 6)}</td>
       <td>${fmt.gbp(p.book_cost_per_unit)}</td>
       <td>${fmt.gbp(p.total_book_cost)}</td>
@@ -249,8 +267,10 @@ function renderPortfolio() {
       </td>
       <td>${p.last_price != null ? fmt.gbp(p.last_price) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${p.current_value != null ? fmt.gbp(p.current_value) : '<span style="color:var(--muted)">—</span>'}</td>
-      <td class="${pnlClass}">${pnlStr}</td>
-      <td class="${pnlClass}">${pnlPctStr}</td>
+      <td class="${isClosed ? '' : pnlClass}">${isClosed ? '—' : pnlStr}</td>
+      <td class="${isClosed ? pnlClass : ''}">${isClosed ? pnlStr : '—'}</td>
+      <td class="${isClosed ? pnlClass : pnlClass}">${pnlPctStr}</td>
+      <td class="${cagrClass}"><strong>${cagrStr}</strong></td>
       <td style="color:var(--pos);font-weight:600">${p.annual_yield != null ? (p.annual_yield * 100).toFixed(2) + '%' : '<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:11px;color:var(--muted)">
         ${showFx && p.last_fx_rate ? p.last_fx_rate.toFixed(4) + '<br>' + esc(nativeCcy) + '→GBP' : '—'}
@@ -611,10 +631,18 @@ function renderTotalReturnChart(tr) {
 // ── Add / Edit Modal ────────────────────────────────────────────────────────
 let _editingId = null;
 
+function toggleClosedFields() {
+  const status = document.getElementById('pos-form').status.value;
+  document.getElementById('closed-fields').style.display = status === 'closed' ? 'flex' : 'none';
+}
+
 function openAddModal() {
   _editingId = null;
   document.getElementById('modal-title').textContent = 'Add Position';
-  document.getElementById('pos-form').reset();
+  const f = document.getElementById('pos-form');
+  f.reset();
+  f.status.value = 'open';
+  toggleClosedFields();
   document.getElementById('pos-modal').classList.add('open');
 }
 
@@ -635,6 +663,11 @@ function openEditModal(id) {
   f.t212_ticker.value = p.t212_ticker || '';
   f.notes.value = p.notes || '';
   f.annual_yield.value = p.annual_yield != null ? (p.annual_yield * 100).toFixed(2) : '';
+  f.purchase_date.value = p.purchase_date || '';
+  f.status.value = p.status || 'open';
+  f.sell_date.value = p.sell_date || '';
+  f.sell_price.value = p.sell_price || '';
+  toggleClosedFields();
   document.getElementById('pos-modal').classList.add('open');
 }
 
@@ -657,6 +690,10 @@ async function savePosition() {
     t212_ticker: f.t212_ticker.value.trim() || null,
     notes: f.notes.value.trim() || null,
     annual_yield: f.annual_yield.value ? (parseFloat(f.annual_yield.value) / 100) : null,
+    purchase_date: f.purchase_date.value || null,
+    status: f.status.value,
+    sell_date: f.sell_date.value || null,
+    sell_price: f.sell_price.value ? parseFloat(f.sell_price.value) : null,
   };
   if (!data.name || !data.units || !data.book_cost_per_unit) {
     notify('Please fill required fields', 'error'); return;

@@ -13,15 +13,24 @@ def get_summary():
     counts: dict = {}
     total_book = 0.0
     total_value = 0.0
+    realised_pnl = 0.0
     by_asset: dict = {}
 
     for pos in rows:
-        price = pos.get("last_price")
+        status = pos.get("status", "open")
         units = pos.get("units", 0)
         book = pos.get("book_cost_per_unit", 0)
         tb = units * book
-        val = units * price if price else None
         atype = pos.get("asset_type", "stock")
+        
+        if status == "closed":
+            sell_price = pos.get("sell_price")
+            val = units * sell_price if sell_price is not None else tb
+            realised_pnl += (val - tb)
+            continue # Don't add to active portfolio totals
+
+        price = pos.get("last_price")
+        val = units * price if price else None
 
         counts[atype] = counts.get(atype, 0) + 1
         total_book += tb
@@ -37,6 +46,49 @@ def get_summary():
 
     capital_growth = round(total_value - total_book, 2)
     capital_growth_pct = round((capital_growth / total_book * 100), 2) if total_book else 0.0
+
+    # Calculate weighted average historical CAGR
+    from datetime import datetime
+    total_weighted_cagr = 0.0
+    cagr_weight_sum = 0.0
+
+    for pos in rows:
+        status = pos.get("status", "open")
+        units = pos.get("units", 0)
+        book = pos.get("book_cost_per_unit", 0)
+        tb = units * book
+        
+        if status == "closed":
+            price = pos.get("sell_price")
+            end_date_str = pos.get("sell_date")
+        else:
+            price = pos.get("last_price")
+            end_date_str = None
+            
+        val = units * price if price else None
+        
+        if val is not None and tb > 0:
+            start_date_str = pos.get("purchase_date") or pos.get("created_at")
+            if start_date_str:
+                try:
+                    clean_str = start_date_str.split(".")[0].replace("Z", "")
+                    start_dt = datetime.fromisoformat(clean_str).replace(tzinfo=None)
+                    
+                    if end_date_str:
+                        end_clean = end_date_str.split(".")[0].replace("Z", "")
+                        end_dt = datetime.fromisoformat(end_clean).replace(tzinfo=None)
+                    else:
+                        end_dt = datetime.now().replace(tzinfo=None)
+                        
+                    days = (end_dt - start_dt).days
+                    years = max(days / 365.25, 1.0)
+                    cagr = ((val / tb) ** (1 / years)) - 1
+                    total_weighted_cagr += cagr * val
+                    cagr_weight_sum += val
+                except Exception:
+                    pass
+
+    historical_cagr = total_weighted_cagr / cagr_weight_sum if cagr_weight_sum > 0 else 0.0
 
     cutoff = (date.today() - timedelta(days=365)).isoformat()
     with db() as conn:
@@ -69,10 +121,7 @@ def get_summary():
                 native_ccy = pos.get("native_currency") or "GBP"
                 
                 if native_ccy in ("GBp", "GBX"):
-                    if price and amt > price * 0.2:
-                        amt = amt / 100
-                    elif not price and amt > 1.0:
-                        amt = amt / 100
+                    amt = amt / 100
                         
                 projected_income += amt * units
 
@@ -83,6 +132,8 @@ def get_summary():
         "total_current_value": round(total_value, 2),
         "capital_growth": capital_growth,
         "capital_growth_pct": capital_growth_pct,
+        "realised_pnl": round(realised_pnl, 2),
+        "historical_cagr": round(historical_cagr, 4),
         "income_ttm": round(income_ttm, 2),
         "projected_annual_income": round(projected_income, 2),
         "annual_dividend_income_est": annual_income_est,

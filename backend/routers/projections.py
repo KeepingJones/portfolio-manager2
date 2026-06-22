@@ -54,10 +54,7 @@ def _get_portfolio_stats() -> dict:
                     native_ccy = pos.get("native_currency") or "GBP"
                     
                     if native_ccy in ("GBp", "GBX"):
-                        if price and amt > price * 0.2:
-                            amt = amt / 100
-                        elif not price and amt > 1.0:
-                            amt = amt / 100
+                        amt = amt / 100
                             
                     annual_income += amt * units
 
@@ -69,15 +66,21 @@ def _get_portfolio_stats() -> dict:
     }
 
 
+from routers.summary import get_summary
+
 @router.get("")
 def get_projections(years: int = 20, income_years: int = 10):
     stats = _get_portfolio_stats()
-    growth = project_growth(stats["total_value"], years=years)
+    summary = get_summary()
+    hcagr = summary.get("historical_cagr", 0.0)
+
+    growth = project_growth(stats["total_value"], years=years, historical_cagr=hcagr)
     income = project_income(stats["annual_income"], years=income_years)
     total_return = project_total_return(
         current_value=stats["total_value"],
         annual_income=stats["annual_income"],
         years=years,
+        historical_cagr=hcagr,
     )
     return {
         "stats": stats,

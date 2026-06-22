@@ -70,10 +70,7 @@ def list_dividend_events():
         native_ccy = d.get("native_currency") or "GBP"
         last_price = d.get("last_price")
         if amt and native_ccy in ("GBp", "GBX"):
-            if last_price and amt > last_price * 0.2:
-                amt = amt / 100
-            elif not last_price and amt > 1.0:
-                amt = amt / 100
+            amt = amt / 100
             d["amount_per_unit"] = amt
             
         d["projected_total"] = round(d["units"] * d["amount_per_unit"], 2) if d["amount_per_unit"] else None
@@ -100,10 +97,7 @@ def upcoming_dividends():
         native_ccy = d.get("native_currency") or "GBP"
         last_price = d.get("last_price")
         if amt and native_ccy in ("GBp", "GBX"):
-            if last_price and amt > last_price * 0.2:
-                amt = amt / 100
-            elif not last_price and amt > 1.0:
-                amt = amt / 100
+            amt = amt / 100
             d["amount_per_unit"] = amt
             
         d["projected_total"] = round(d["units"] * d["amount_per_unit"], 2) if d["amount_per_unit"] else None

@@ -92,6 +92,14 @@
             <span class="split-row-label">Cash Balance</span>
             <span class="split-row-val" id="overview-cash">—</span>
           </div>
+          <div class="split-row">
+            <span class="split-row-label">Capital growth</span>
+            <span class="split-row-val" id="overview-cg">£0.00</span>
+          </div>
+          <div class="split-row" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+            <span class="split-row-label" style="font-weight:600">Historical Ann. Return</span>
+            <span class="split-row-val" id="overview-cagr" style="font-weight:600">—</span>
+          </div>
           <div class="split-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
             <span class="split-row-label"><strong>Total Portfolio</strong></span>
             <span class="split-row-val accent" id="overview-total" style="font-weight:700">—</span>
@@ -162,7 +170,11 @@
     <div class="page" id="page-portfolio">
       <div class="section-header">
         <h2>Holdings</h2>
-        <div class="section-actions">
+        <div class="section-actions" style="display:flex; align-items:center; gap: 12px;">
+          <label style="font-size:12px; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" id="toggle-closed-positions" onchange="renderPortfolio()" style="margin-right:4px;">
+            Show Closed
+          </label>
           <input id="tbl-filter" class="btn" type="text" placeholder="🔍 Filter…" style="width:180px;cursor:text" />
           <button class="btn btn-primary" onclick="openAddModal()">+ Add Position</button>
         </div>
@@ -174,14 +186,17 @@
               <tr>
                 <th class="sortable" data-col="name">Name / ISIN <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="asset_type">Type <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="purchase_date">Purchase Date <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="units">Units <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="book_cost_per_unit">Book/Unit <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="total_book_cost">Total Cost <span class="sort-icon">↕</span></th>
                 <th>Native Price</th>
                 <th class="sortable" data-col="last_price">GBP Price <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="current_value">Value <span class="sort-icon">↕</span></th>
-                <th class="sortable" data-col="unrealised_pnl">PnL £ <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="unrealised_pnl">Unrealised PnL <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="realised_pnl">Realised PnL <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="unrealised_pnl_pct">PnL % <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="cagr">Ann. Return <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="annual_yield">Div Yield <span class="sort-icon">↕</span></th>
                 <th>FX Rate</th>
                 <th>Price Updated</th>
@@ -342,7 +357,6 @@
           </div>
         </div>
       </div>
-      </div>
       
       <div class="card-grid" style="grid-template-columns: 1fr; max-width: 600px; margin-top: 24px;">
         <div class="card">
@@ -427,6 +441,30 @@
           </div>
         </div>
         <div class="form-row-2">
+          <div>
+            <label>Status</label>
+            <select name="status" onchange="toggleClosedFields()">
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+        <div class="form-row-2" id="closed-fields" style="display:none;">
+          <div>
+            <label>Sell Date</label>
+            <input name="sell_date" type="date" />
+          </div>
+          <div>
+            <label>Sell Price (GBP)</label>
+            <input name="sell_price" type="number" step="any" placeholder="e.g. 5.12" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>Purchase Date</label>
+            <input name="purchase_date" type="date" />
+          </div>
           <div>
             <label>Book Cost Currency</label>
             <select name="currency">

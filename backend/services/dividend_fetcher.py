@@ -87,10 +87,7 @@ def project_future_payments(
     native_ccy = position.get("native_currency", "GBP")
     last_price_gbp = position.get("last_price")
     if native_ccy in ("GBp", "GBX"):
-        if last_price_gbp and last_amount > last_price_gbp * 0.2:
-            last_amount = last_amount / 100
-        elif not last_price_gbp and last_amount > 1.0:
-            last_amount = last_amount / 100
+        last_amount = last_amount / 100
 
     try:
         last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
@@ -138,7 +135,7 @@ def project_future_payments(
 
 # ── yfinance fetch ─────────────────────────────────────────────────────────
 
-def fetch_yf_dividends(ticker: str) -> dict:
+def fetch_yf_dividends(ticker: str, native_currency: str = "GBP") -> dict:
     result = {"historical": [], "upcoming": None, "annual_yield": None, "annual_rate": None}
     try:
         t = yf.Ticker(ticker)
@@ -157,10 +154,15 @@ def fetch_yf_dividends(ticker: str) -> dict:
         if ex_ts:
             ex_date = (datetime.fromtimestamp(ex_ts).date().isoformat()
                        if isinstance(ex_ts, (int, float)) else _safe_date(ex_ts))
+            
+            amt = float(last_div) if last_div else None
+            if amt and native_currency in ("GBp", "GBX"):
+                amt = amt * 100
+                
             result["upcoming"] = {
                 "ex_date": ex_date,
                 "pay_date": None,
-                "amount_per_unit": round(float(last_div), 6) if last_div else None,
+                "amount_per_unit": round(amt, 6) if amt else None,
             }
 
         raw_yield = info.get("dividendYield")
@@ -169,7 +171,10 @@ def fetch_yf_dividends(ticker: str) -> dict:
             # instead of a decimal (0.0625) for GBp-listed UK stocks — divide back down.
             raw_yield = raw_yield / 100
         result["annual_yield"] = raw_yield
-        result["annual_rate"] = info.get("dividendRate")
+        ann_rate = info.get("dividendRate")
+        if ann_rate and native_currency in ("GBp", "GBX"):
+            ann_rate = ann_rate * 100
+        result["annual_rate"] = ann_rate
 
     except Exception:
         pass
@@ -291,9 +296,9 @@ def fetch_dividends_for_position(
             mapped = _openfigi_to_ticker(val)
             if not mapped:
                 continue
-            candidate = fetch_yf_dividends(mapped)
+            candidate = fetch_yf_dividends(mapped, native_currency)
         else:
-            candidate = fetch_yf_dividends(val)
+            candidate = fetch_yf_dividends(val, native_currency)
         if candidate["historical"] or candidate["upcoming"]:
             data = candidate
             break

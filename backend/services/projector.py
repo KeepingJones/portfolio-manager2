@@ -4,9 +4,10 @@ from typing import Optional
 def project_growth(
     current_value: float,
     years: int = 20,
+    historical_cagr: Optional[float] = None,
 ) -> dict:
     """
-    Returns yearly portfolio value under 4 CAGR scenarios.
+    Returns yearly portfolio value under 4 CAGR scenarios + historical.
     """
     scenarios = {
         "Conservative (3%)": 0.03,
@@ -14,6 +15,10 @@ def project_growth(
         "Optimistic (7%)": 0.07,
         "Aggressive (10%)": 0.10,
     }
+    if historical_cagr is not None:
+        pct_label = f"Historical Trend ({round(historical_cagr * 100, 1)}%)"
+        scenarios[pct_label] = historical_cagr
+
     year_labels = list(range(1, years + 1))
     return {
         "current_value": round(current_value, 2),
@@ -23,7 +28,6 @@ def project_growth(
             for label, rate in scenarios.items()
         },
     }
-
 
 def project_income(
     annual_income: float,
@@ -43,18 +47,21 @@ def project_income(
         "scenarios": scenarios,
     }
 
-
 def project_total_return(
     current_value: float,
     annual_income: float,
     years: int = 20,
     growth_rate: float = 0.05,
     income_growth_rate: float = 0.03,
+    historical_cagr: Optional[float] = None,
 ) -> dict:
     """
     Total return: capital growth + dividends.
     Two variants: reinvested vs taken as cash.
     """
+    if historical_cagr is not None:
+        growth_rate = historical_cagr
+
     year_labels = list(range(1, years + 1))
 
     # Cash: value grows at growth_rate, income taken out each year

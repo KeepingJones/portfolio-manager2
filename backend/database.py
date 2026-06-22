@@ -11,6 +11,10 @@ _ALLOWED_MIGRATIONS: list[tuple[str, str]] = [
     ("native_price", "REAL"),
     ("last_fx_rate", "REAL"),
     ("annual_yield", "REAL"),
+    ("purchase_date", "TEXT"),
+    ("status", "TEXT"),
+    ("sell_date", "TEXT"),
+    ("sell_price", "REAL"),
 ]
 
 _initialized_dbs = set()
@@ -75,7 +79,11 @@ def _init_schema(conn: sqlite3.Connection):
             last_price_at TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-            annual_yield REAL
+            annual_yield REAL,
+            purchase_date TEXT,
+            status TEXT DEFAULT 'open',
+            sell_date TEXT,
+            sell_price REAL
         );
 
         CREATE TABLE IF NOT EXISTS dividend_events (
