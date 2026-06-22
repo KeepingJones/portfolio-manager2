@@ -57,4 +57,39 @@ const API = {
   createProfile: (id, name) => API._fetch('/api/profiles', { method: 'POST', body: JSON.stringify({ id, name }) }),
   updateProfile: (id, name) => API._fetch(`/api/profiles/${id}`, { method: 'PUT', body: JSON.stringify({ id, name }) }),
   deleteProfile: (id) => API._fetch(`/api/profiles/${id}`, { method: 'DELETE' }),
+
+  // AI
+  streamAIAnalysis: async (onChunk, onDone, onError) => {
+    try {
+      const profile = localStorage.getItem('portfolio_profile') || 'default';
+      const r = await fetch('/api/ai/analyze', { headers: { 'X-Profile': profile } });
+      if (!r.ok) {
+        const err = await r.text();
+        throw new Error(err || r.statusText);
+      }
+      
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) onChunk(chunk);
+      }
+      onDone();
+    } catch (err) {
+      onError(err);
+    }
+  },
+
+  getOllamaModels: async () => {
+    const profile = localStorage.getItem('portfolio_profile') || 'default';
+    const r = await fetch('/api/ai/models', { headers: { 'X-Profile': profile } });
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(err || r.statusText);
+    }
+    return await r.json();
+  }
 };

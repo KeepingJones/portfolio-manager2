@@ -350,7 +350,31 @@ def _pdf_table_style(header_rows=1):
     ])
 
 
-def _build_pdf(d: dict) -> bytes:
+import httpx
+from routers.ai import get_ollama_settings
+
+async def _fetch_ai_summary(d: dict) -> str:
+    settings = get_ollama_settings()
+    s = d["summary"]
+    prompt = f"""You are a professional financial analyst. Write a concise 1-2 paragraph executive summary for a monthly portfolio report.
+The portfolio has £{s['total_current_value']} in assets across {s['positions_count']} positions.
+It has generated £{s['capital_growth']} in capital growth ({s['capital_growth_pct']}%) and is projected to yield £{s['projected_annual_income']} in dividends over the next 12 months.
+Do not use markdown. Write in a formal, encouraging tone."""
+    
+    ollama_url = settings["url"].rstrip('/') + "/api/generate"
+    payload = {"model": settings["model"], "prompt": prompt, "stream": False}
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(ollama_url, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("response", "").strip()
+    except Exception:
+        pass
+    return "AI-generated executive summary is currently unavailable. Please ensure your local Ollama instance is running."
+
+async def _build_pdf_async(d: dict) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
         leftMargin=15*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=15*mm)
@@ -363,6 +387,8 @@ def _build_pdf(d: dict) -> bytes:
                          textColor=_PDF_MUTED, spaceAfter=4, spaceBefore=8)
     sub = ParagraphStyle("sub", fontName="Helvetica", fontSize=9,
                           textColor=_PDF_MUTED, spaceAfter=12)
+    body_text = ParagraphStyle("body_text", fontName="Helvetica", fontSize=9,
+                                textColor=_PDF_TEXT, spaceAfter=12, leading=14)
 
     s = d["summary"]
     story = []
@@ -399,21 +425,25 @@ def _build_pdf(d: dict) -> bytes:
         ("BOTTOMPADDING", (0,0), (-1,-1), 5),
         ("LEFTPADDING",   (0,0), (-1,-1), 10),
         ("GRID",          (0,0), (-1,-1), 0.3, _PDF_BORDER),
-        # Total with cash row — bigger, accent
         ("FONTNAME",      (0,2), (1,2), "Helvetica-Bold"),
         ("FONTSIZE",      (1,2), (1,2), 13),
         ("BACKGROUND",    (0,2), (1,2), _PDF_SURF),
-        # Capital growth colour
         ("TEXTCOLOR",     (1,4), (1,4), _PDF_POS if cg >= 0 else _PDF_NEG),
-        # Income rows green
         ("TEXTCOLOR",     (1,6), (1,7), _PDF_POS),
-        # Separator rows dimmer
         ("BACKGROUND",    (0,5), (1,5), _PDF_BG),
         ("BACKGROUND",    (0,8), (1,8), _PDF_BG),
     ])
     W = doc.width
     story.append(Table(cover_data, colWidths=[W*0.45, W*0.55], style=cover_ts))
     story.append(Spacer(1, 8*mm))
+
+    # AI Executive Summary
+    story.append(Paragraph("Executive Summary (AI Generated)", h3))
+    ai_text = await _fetch_ai_summary(d)
+    for paragraph in ai_text.split('\n'):
+        if paragraph.strip():
+            story.append(Paragraph(paragraph.strip(), body_text))
+    story.append(Spacer(1, 6*mm))
 
     # Asset breakdown
     story.append(Paragraph("Asset Class Breakdown", h3))
@@ -451,7 +481,6 @@ def _build_pdf(d: dict) -> bytes:
         ])
 
     h_ts = _pdf_table_style()
-    # Colour PnL columns
     for row_i, p in enumerate(d["positions"], start=1):
         pnl = p.get("unrealised_pnl") or 0
         c = _PDF_POS if pnl >= 0 else _PDF_NEG
@@ -474,7 +503,6 @@ def _build_pdf(d: dict) -> bytes:
         payments = sorted(cal[ym], key=lambda x: -x["projected_total"])
         mtotal = sum(p["projected_total"] for p in payments); grand += mtotal
 
-        # Month header: its own 1-row table so background never splits
         mhdr_ts = TableStyle([
             ("BACKGROUND",   (0,0), (-1,0), _PDF_SURF2),
             ("TEXTCOLOR",    (0,0), (-1,0), _PDF_TEXT),
@@ -490,14 +518,12 @@ def _build_pdf(d: dict) -> bytes:
         ])
         story.append(Table([[lbl, "", "", _gbp(mtotal)]], colWidths=cws, style=mhdr_ts))
 
-        # Detail rows: simple table
         det_data = [["", p["position_name"][:35], p["frequency_label"], _gbp(p["projected_total"])] for p in payments]
         det_ts = _pdf_table_style()
         det_ts.add("ALIGN", (3,0), (3,-1), "RIGHT")
         det_ts.add("TEXTCOLOR", (3,0), (3,-1), _PDF_POS)
         story.append(Table(det_data, colWidths=cws, style=det_ts))
 
-    # Grand total
     gt_ts = TableStyle([
         ("BACKGROUND",   (0,0), (-1,0), _PDF_BG),
         ("TEXTCOLOR",    (0,0), (-1,0), _PDF_TEXT),
@@ -537,7 +563,6 @@ def _build_pdf(d: dict) -> bytes:
         rec_ts.add("TEXTCOLOR", (2,last), (2,last), _PDF_POS)
         story.append(Table(rec_data, colWidths=[W*0.32, W*0.15, W*0.15, W*0.10, W*0.28], style=rec_ts, repeatRows=1))
 
-    # Background colour for every page
     def _bg(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(_PDF_BG)
@@ -549,9 +574,9 @@ def _build_pdf(d: dict) -> bytes:
 
 
 @router.get("/report.pdf")
-def export_pdf():
+async def export_pdf():
     d = _load_report_data()
-    pdf_bytes = _build_pdf(d)
+    pdf_bytes = await _build_pdf_async(d)
     fname = f"portfolio_report_{d['iso_date']}.pdf"
     return StreamingResponse(io.BytesIO(pdf_bytes),
         media_type="application/pdf",

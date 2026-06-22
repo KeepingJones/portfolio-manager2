@@ -16,6 +16,7 @@
     <div class="nav-item" data-page="portfolio"><span class="icon">≡</span> Holdings</div>
     <div class="nav-item" data-page="income"><span class="icon">₤</span> Income</div>
     <div class="nav-item" data-page="projections"><span class="icon">↗</span> Projections</div>
+    <div class="nav-item" data-page="ai"><span class="icon">✨</span> AI Insights</div>
     <div class="nav-item" data-page="settings"><span class="icon">⚙</span> Settings</div>
   </nav>
   <div class="sidebar-footer">
@@ -304,6 +305,23 @@
       </div>
     </div>
 
+    <!-- ── AI INSIGHTS ──────────────────────────────────────── -->
+    <div class="page" id="page-ai">
+      <div class="section-header">
+        <h2>AI Portfolio Insights</h2>
+        <button class="btn btn-primary" id="btn-generate-ai">✨ Generate Analysis</button>
+      </div>
+      <div class="card-grid" style="grid-template-columns: 1fr;">
+        <div class="card" style="min-height: 400px;">
+          <div id="ai-content" style="line-height:1.6;color:var(--fg);font-size:14px">
+            <div style="color:var(--muted);text-align:center;padding:40px 0">
+              Click the button above to generate a comprehensive AI analysis of your portfolio using Ollama.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── SETTINGS ───────────────────────────────────────── -->
     <div class="page" id="page-settings">
       <div class="section-header">
@@ -321,6 +339,27 @@
           <div class="form-row-2">
              <div><input id="new-profile-name" type="text" placeholder="New Portfolio Name (e.g. My ISA)"></div>
              <div><button class="btn btn-primary" onclick="createNewProfile()" style="width:100%;justify-content:center">+ Create Portfolio</button></div>
+          </div>
+        </div>
+      </div>
+      </div>
+      
+      <div class="card-grid" style="grid-template-columns: 1fr; max-width: 600px; margin-top: 24px;">
+        <div class="card">
+          <div class="card-label" style="margin-bottom:12px">Local AI (Ollama) Configuration</div>
+          <div class="form-row">
+            <label>Ollama URL</label>
+            <input id="setting-ollama-url" type="text" placeholder="http://localhost:11434">
+          </div>
+          <div class="form-row">
+            <label>Ollama Model</label>
+            <div style="display:flex;gap:6px;width:100%">
+              <select id="setting-ollama-model" style="flex:1"></select>
+              <button class="btn btn-sm" onclick="fetchOllamaModels()">Scan</button>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
           </div>
         </div>
       </div>
@@ -498,7 +537,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="/js/api.js?v=3"></script>
-<script src="/js/app.js?v=3"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/js/api.js?v=4"></script>
+<script src="/js/app.js?v=4"></script>
 </body>
 </html>

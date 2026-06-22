@@ -118,7 +118,12 @@ Three tabs, each with a Chart.js line/bar chart:
 
 ### Export
 - **Excel** (`/api/export/report.xlsx`) — holdings table + summary sheet
-- **PDF** (`/api/export/report.pdf`) — formatted A4 portfolio report
+- **PDF** (`/api/export/report.pdf`) — formatted A4 portfolio report with an automatically generated AI Executive Summary.
+
+### AI Portfolio Insights
+- **Local AI Analysis** — Deep, contextual analysis of your portfolio's performance, risk, and dividend sustainability.
+- Powered entirely by your local **Ollama** instance so your financial data never leaves your machine.
+- Generates a markdown report directly in the browser with no external API calls required.
 
 ### Trading 212 Import
 - **Import T212** button pulls all open positions from the T212 API
@@ -139,6 +144,14 @@ T212_LIVE_API_KEY=        # only needed when T212_MODE=live
 ```
 
 T212 integration is entirely optional. All other features work without it.
+
+### Local AI Setup (Ollama)
+To enable the **AI Insights** tab and the AI-generated PDF summaries, you must have [Ollama](https://ollama.com/) running on your local machine.
+
+1. Download and install Ollama.
+2. Run `ollama run llama3` (or any other model like `phi3` or `mistral`) in your terminal to download the model.
+3. Open the app **Settings** tab and ensure the Ollama URL is correct (usually `http://localhost:11434`) and the model matches what you downloaded.
+4. Note: On Windows, you might need to set `OLLAMA_ORIGINS="*"` in your environment variables if you experience CORS issues (though the backend proxy handles this out-of-the-box).
 
 ---
 

@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import os
 
 from database import active_profile
-from routers import positions, refresh, dividends, projections, t212, export, settings, summary, profiles
+from routers import positions, refresh, dividends, projections, t212, export, settings, summary, profiles, ai
 
 app = FastAPI(title="Portfolio Manager")
 
@@ -31,6 +31,7 @@ app.include_router(export.router)
 app.include_router(settings.router)
 app.include_router(summary.router)
 app.include_router(profiles.router)
+app.include_router(ai.router)
 
 # Serve frontend
 _frontend = os.path.join(os.path.dirname(__file__), "..", "frontend")

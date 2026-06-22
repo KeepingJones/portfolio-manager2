@@ -82,6 +82,11 @@ async function loadAll() {
       API.getProfiles().catch(() => ([{id: 'default', name: 'Default'}])),
     ]);
     renderProfilesUI();
+    document.getElementById('setting-ollama-url').value = S.settings.ollama_url || 'http://localhost:11434';
+    const savedModel = S.settings.ollama_model || 'llama3';
+    const select = document.getElementById('setting-ollama-model');
+    select.innerHTML = `<option value="${savedModel}">${savedModel}</option>`;
+    select.value = savedModel;
   } catch (e) {
     notify('Failed to load data: ' + e.message, 'error');
   }
@@ -328,15 +333,59 @@ async function saveManualPrice() {
   } catch (e) { notify(e.message, 'error'); }
 }
 
-// ── Cash balance ────────────────────────────────────────────────────────────
+// ── Cash balance & Settings ───────────────────────────────────────────────────
 async function saveCash() {
   const val = parseFloat(document.getElementById('cash-input').value);
   if (isNaN(val) || val < 0) { notify('Enter a valid cash amount', 'error'); return; }
   try {
-    S.settings = await API.updateSettings({ cash_balance: val });
+    const cash = val;
+    const ollama_url = S.settings.ollama_url || 'http://localhost:11434';
+    const ollama_model = S.settings.ollama_model || 'llama3';
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model });
     notify(`Cash balance saved: ${fmt.gbp(val)}`);
     renderDashboard();
   } catch (e) { notify(e.message, 'error'); }
+}
+async function saveSettings() {
+  const cash = parseFloat(document.getElementById('cash-input').value) || 0;
+  const ollama_url = document.getElementById('setting-ollama-url').value;
+  const ollama_model = document.getElementById('setting-ollama-model').value;
+  try {
+    S.settings = await API.updateSettings({ cash_balance: cash, ollama_url, ollama_model });
+    notify('Settings saved');
+    renderDashboard();
+  } catch (e) { notify(e.message, 'error'); }
+}
+
+// ── AI ──────────────────────────────────────────────────────────────────────
+document.getElementById('ai-generate')?.addEventListener('click', async () => {
+  notify('Generating insights...');
+  try {
+    const res = await API.aiGenerate();
+    document.getElementById('ai-output').textContent = res.text;
+  } catch (e) { notify(e.message, 'error'); }
+});
+
+async function fetchOllamaModels() {
+  try {
+    notify('Scanning local Ollama for models...');
+    const data = await API.getOllamaModels();
+    if (data.status === 'ok') {
+      const select = document.getElementById('setting-ollama-model');
+      const currentVal = select.value;
+      select.innerHTML = data.models.map(m => `<option value="${m}">${m}</option>`).join('');
+      if (data.models.includes(currentVal)) {
+        select.value = currentVal;
+      } else if (data.models.length > 0) {
+        select.value = data.models[0];
+      }
+      notify(`Found ${data.models.length} models`);
+    } else {
+      notify(data.message, 'error');
+    }
+  } catch (err) {
+    notify('Failed to scan models: ' + err.message, 'error');
+  }
 }
 
 // ── Income ─────────────────────────────────────────────────────────────────
@@ -875,6 +924,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Tick the "Updated X ago" label every second
   setInterval(_updateLastRefreshedLabel, 1000);
+
+  // AI Insights Generation
+  document.getElementById('btn-generate-ai').addEventListener('click', () => {
+    const btn = document.getElementById('btn-generate-ai');
+    const content = document.getElementById('ai-content');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+    content.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0">Connecting to Ollama...</div>';
+    
+    let md = '';
+    API.streamAIAnalysis(
+      (chunk) => {
+        md += chunk;
+        content.innerHTML = marked.parse(md);
+      },
+      () => { // done
+        btn.disabled = false;
+        btn.innerHTML = '✨ Generate Analysis';
+      },
+      (err) => { // error
+        btn.disabled = false;
+        btn.innerHTML = '✨ Generate Analysis';
+        notify(err.message, 'error');
+        content.innerHTML = `<div style="color:var(--fg-danger);padding:20px">${err.message}</div>`;
+      }
+    );
+  });
 
   await loadAll();
   S._lastRefreshed = Date.now();
