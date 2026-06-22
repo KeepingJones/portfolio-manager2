@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Manager</title>
+  <link rel="stylesheet" href="/css/style.css?v=3" />
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo"><span>◈</span> Portfolio</div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="dashboard"><span class="icon">⊞</span> Dashboard</div>
+    <div class="nav-item" data-page="portfolio"><span class="icon">≡</span> Holdings</div>
+    <div class="nav-item" data-page="income"><span class="icon">₤</span> Income</div>
+    <div class="nav-item" data-page="projections"><span class="icon">↗</span> Projections</div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn" style="width:100%;justify-content:center" id="importT212Btn">⬇ Import T212</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <span class="topbar-title">Portfolio Manager</span>
+    <div class="topbar-right">
+      <span class="last-updated" id="last-updated"></span>
+      <span class="auto-refresh-wrap" title="Auto-refresh interval">
+        <label for="autoRefreshSelect" style="font-size:12px;color:var(--muted)">Auto</label>
+        <select id="autoRefreshSelect" class="btn" style="padding:4px 8px;font-size:12px;cursor:pointer">
+          <option value="0">Off</option>
+          <option value="5">5m</option>
+          <option value="10">10m</option>
+          <option value="30">30m</option>
+          <option value="60">1h</option>
+        </select>
+      </span>
+      <button class="btn" id="addPosBtn">+ Add Position</button>
+      <button class="btn btn-primary" id="refreshBtn">⟳ Refresh Prices</button>
+      <a class="btn" href="/api/export/report.xlsx" download title="Download Excel report">⬇ Excel</a>
+      <a class="btn" href="/api/export/report.pdf" download title="Download PDF report">⬇ PDF</a>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ────────────────────────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-label">Total Portfolio Value</div>
+          <div class="card-value accent" id="card-total-value">—</div>
+          <div class="card-sub" id="card-book-cost">Book cost —</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Capital Growth</div>
+          <div class="card-value" id="card-pnl">—</div>
+          <div class="card-sub" id="card-pnl-pct">price appreciation vs book cost</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Income Received (12m)</div>
+          <div class="card-value pos" id="card-income-ttm">—</div>
+          <div class="card-sub" id="card-proj-income">projected annual —</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Holdings</div>
+          <div class="card-value" id="card-holdings">—</div>
+          <div class="card-sub">positions</div>
+        </div>
+      </div>
+
+      <!-- Growth vs Income explanation cards -->
+      <div class="split-grid">
+        <div class="split-card">
+          <div class="split-card-title">Portfolio Overview</div>
+          <div class="split-row">
+            <span class="split-row-label">Invested Value</span>
+            <span class="split-row-val accent" id="overview-invested">—</span>
+          </div>
+          <div class="split-row">
+            <span class="split-row-label">Cash Balance</span>
+            <span class="split-row-val" id="overview-cash">—</span>
+          </div>
+          <div class="split-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="split-row-label"><strong>Total Portfolio</strong></span>
+            <span class="split-row-val accent" id="overview-total" style="font-weight:700">—</span>
+          </div>
+          <div class="split-row" style="margin-top:10px">
+            <span class="split-row-label" style="font-size:11px;color:var(--muted)">Cash balance £</span>
+            <span style="display:flex;gap:6px;align-items:center">
+              <input id="cash-input" type="number" min="0" step="0.01"
+                style="width:100px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:12px" />
+              <button class="btn btn-sm" onclick="saveCash()">Save</button>
+            </span>
+          </div>
+        </div>
+        <div class="split-card">
+          <div class="split-card-title"><span class="dot dot-growth"></span> Capital Growth (Price Appreciation)</div>
+          <div class="split-row">
+            <span class="split-row-label">Current Market Value</span>
+            <span class="split-row-val accent" id="growth-value">—</span>
+          </div>
+          <div class="split-row">
+            <span class="split-row-label">Total Book Cost</span>
+            <span class="split-row-val" id="growth-book">—</span>
+          </div>
+          <div class="split-row">
+            <span class="split-row-label">Unrealised Gain / Loss</span>
+            <span class="split-row-val" id="growth-pnl">—</span>
+          </div>
+          <div class="split-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="split-row-label">Return on Cost</span>
+            <span class="split-row-val" id="growth-pct">—</span>
+          </div>
+        </div>
+        <div class="split-card">
+          <div class="split-card-title"><span class="dot dot-income"></span> Income (Dividends &amp; Distributions)</div>
+          <div class="split-row">
+            <span class="split-row-label">Received last 12 months</span>
+            <span class="split-row-val pos" id="income-ttm">—</span>
+          </div>
+          <div class="split-row">
+            <span class="split-row-label">Projected next 12 months</span>
+            <span class="split-row-val pos" id="income-proj">—</span>
+          </div>
+          <div class="split-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="split-row-label">Est. yield on cost</span>
+            <span class="split-row-val" id="income-yield">—</span>
+          </div>
+          <div class="split-row">
+            <span class="split-row-label">Est. yield on market value</span>
+            <span class="split-row-val" id="income-yield-mkt">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Asset Class Allocation</div>
+          <div class="chart-wrap"><canvas id="allocChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Capital Growth vs Income (Total Return Split)</div>
+          <div class="chart-wrap"><canvas id="returnChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HOLDINGS ──────────────────────────────────────── -->
+    <div class="page" id="page-portfolio">
+      <div class="section-header">
+        <h2>Holdings</h2>
+        <div class="section-actions">
+          <input id="tbl-filter" class="btn" type="text" placeholder="🔍 Filter…" style="width:180px;cursor:text" />
+          <button class="btn btn-primary" onclick="openAddModal()">+ Add Position</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-wrap">
+          <table id="holdings-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="name">Name / ISIN <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="asset_type">Type <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="units">Units <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="book_cost_per_unit">Book/Unit <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="total_book_cost">Total Cost <span class="sort-icon">↕</span></th>
+                <th>Native Price</th>
+                <th class="sortable" data-col="last_price">GBP Price <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="current_value">Value <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="unrealised_pnl">PnL £ <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="unrealised_pnl_pct">PnL % <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="annual_yield">Div Yield <span class="sort-icon">↕</span></th>
+                <th>FX Rate</th>
+                <th>Price Updated</th>
+                <th>Source</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="portfolio-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INCOME ─────────────────────────────────────────── -->
+    <div class="page" id="page-income">
+      <div class="section-header">
+        <h2>Income</h2>
+        <div class="section-actions">
+          <button class="btn" id="fetchAllDivBtn">⬇ Fetch All Dividends</button>
+          <button class="btn" onclick="openLogDividend()">+ Log Received Dividend</button>
+        </div>
+      </div>
+
+      <!-- 12-month calendar -->
+      <div class="table-card" style="margin-bottom:20px">
+        <div class="table-card-header">
+          <h3>12-Month Projected Income Calendar</h3>
+          <button class="btn btn-sm" onclick="loadCalendar()">⟳ Recalculate</button>
+        </div>
+        <div style="padding:16px 20px">
+          <div class="chart-wrap" style="height:200px"><canvas id="calendarChart"></canvas></div>
+        </div>
+        <div class="table-wrap">
+          <table id="calendar-table">
+            <thead>
+              <tr><th>Month</th><th>Positions Paying</th><th>Projected Total</th></tr>
+            </thead>
+            <tbody id="calendar-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <h3>Upcoming / Recent Dividend Events</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Ex-Date</th>
+                <th>Pay Date</th>
+                <th>Per Unit</th>
+                <th>Projected Total (GBP)</th>
+              </tr>
+            </thead>
+            <tbody id="upcoming-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <h3>Received Dividends &amp; Distributions</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Pay Date</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="received-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROJECTIONS ────────────────────────────────────── -->
+    <div class="page" id="page-projections">
+      <div class="section-header">
+        <h2>Projections</h2>
+        <button class="btn" onclick="S.projections=null; renderProjections()">⟳ Recalculate</button>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card"><div class="card-label">Portfolio Value</div><div class="card-value accent" id="proj-current-value">—</div></div>
+        <div class="card"><div class="card-label">Capital Growth</div><div class="card-value" id="proj-cap-growth">—</div></div>
+        <div class="card"><div class="card-label">Annual Income (est.)</div><div class="card-value pos" id="proj-annual-income">—</div></div>
+        <div class="card"><div class="card-label">Income TTM</div><div class="card-value pos" id="proj-ttm">—</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="tab-growth">Capital Growth</div>
+        <div class="tab" data-tab="tab-income-proj">Income Projection</div>
+        <div class="tab" data-tab="tab-total">Total Return</div>
+      </div>
+
+      <div class="tab-content active" id="tab-growth">
+        <div class="chart-card">
+          <div class="chart-title">Portfolio Value — 4 CAGR Scenarios (20 Years)</div>
+          <div class="chart-wrap" style="height:320px"><canvas id="growthChart"></canvas></div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-income-proj">
+        <div class="chart-card">
+          <div class="chart-title">Annual Dividend &amp; Distribution Income — 3 Scenarios (10 Years)</div>
+          <div class="chart-wrap" style="height:320px"><canvas id="incomeChart"></canvas></div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-total">
+        <div class="chart-card">
+          <div class="chart-title">Total Return — Reinvested vs Cash (20 Years, 5% Growth + 3% Income Growth)</div>
+          <div class="chart-wrap" style="height:320px"><canvas id="totalReturnChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── ADD / EDIT POSITION MODAL ───────────────────────────────── -->
+<div class="modal-backdrop" id="pos-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Position</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="pos-form" onsubmit="return false">
+        <div class="form-row">
+          <label>Name *</label>
+          <input name="name" type="text" placeholder="e.g. Lloyds Banking Group" required />
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>ISIN</label>
+            <input name="isin" type="text" placeholder="e.g. GB0008706128" />
+          </div>
+          <div>
+            <label>Ticker (yfinance)</label>
+            <input name="ticker" type="text" placeholder="e.g. LLOY.L or AAPL" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>Asset Type *</label>
+            <select name="asset_type">
+              <option value="stock">Stock / Equity</option>
+              <option value="bond">Bond / Gilt</option>
+              <option value="oeic">OEIC</option>
+              <option value="unit_trust">Unit Trust</option>
+              <option value="investment_trust">Investment Trust</option>
+            </select>
+          </div>
+          <div>
+            <label>Instrument Currency *</label>
+            <select name="native_currency">
+              <option value="GBP">GBP (£ pounds)</option>
+              <option value="GBp">GBp (pence)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="CHF">CHF</option>
+              <option value="JPY">JPY (¥)</option>
+              <option value="CAD">CAD</option>
+              <option value="AUD">AUD</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>Units / Shares / Nominal *</label>
+            <input name="units" type="number" step="any" placeholder="e.g. 1000" required />
+          </div>
+          <div>
+            <label>Book Cost per Unit (GBP) *</label>
+            <input name="book_cost_per_unit" type="number" step="any" placeholder="e.g. 4.72" required />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>Book Cost Currency</label>
+            <select name="currency">
+              <option value="GBP">GBP</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div>
+            <label>T212 Ticker (optional)</label>
+            <input name="t212_ticker" type="text" placeholder="e.g. LLOY_L_EQ" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label>Manual Yield (%) (optional)</label>
+            <input name="annual_yield" type="number" step="any" placeholder="e.g. 4.36" />
+          </div>
+          <div>
+            <label>Notes</label>
+            <textarea name="notes" placeholder="Optional notes…"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="savePos">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOG DIVIDEND MODAL ──────────────────────────────────────── -->
+<div class="modal-backdrop" id="div-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Log Received Dividend / Distribution</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Position *</label>
+        <select id="div-position"></select>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label>Pay Date *</label>
+          <input id="div-date" type="date" />
+        </div>
+        <div>
+          <label>Total Amount Received (GBP) *</label>
+          <input id="div-amount" type="number" step="any" placeholder="e.g. 48.50" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label>Currency</label>
+          <select id="div-currency">
+            <option value="GBP">GBP</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+        <div>
+          <label>Notes</label>
+          <input id="div-notes" type="text" placeholder="Optional" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReceived()">Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MANUAL PRICE MODAL ───────────────────────────────────────── -->
+<div class="modal-backdrop" id="price-modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-header">
+      <h3 id="price-modal-title">Set Manual Price</h3>
+      <button class="modal-close" onclick="closePriceModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Price *</label>
+        <input id="manual-price" type="number" step="any" placeholder="e.g. 420.99" />
+      </div>
+      <div class="form-row">
+        <label>Currency</label>
+        <select id="manual-currency">
+          <option value="GBP">GBP (£ pounds)</option>
+          <option value="GBp">GBp (pence)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="CHF">CHF</option>
+          <option value="JPY">JPY (¥)</option>
+          <option value="CAD">CAD</option>
+          <option value="AUD">AUD</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closePriceModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveManualPrice()">Save Price</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/js/api.js?v=2"></script>
+<script src="/js/app.js?v=2"></script>
+</body>
+</html>

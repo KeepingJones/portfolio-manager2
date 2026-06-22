@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+
+# Database
+portfolio.db
+
+# Private Portfolio Data
+seed_portfolio.py
+
+# OS Files
+.DS_Store
+Thumbs.db
