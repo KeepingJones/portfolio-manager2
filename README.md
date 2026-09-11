@@ -1,4 +1,16 @@
-# Portfolio Manager
+<div align="center">
+
+![Portfolio Manager — UK Investment Analytics](docs/banner.jpg)
+
+# Portfolio Manager — UK Multi-Asset Investment Platform
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white&style=flat-square)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/Storage-SQLite-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://www.sqlite.org/)
+[![Market Data](https://img.shields.io/badge/Pricing-Live%20Feeds%20%7C%20Trading%20212-f59e0b?style=flat-square)](https://github.com/KeepingJones/portfolio-manager2)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+
+</div>
 
 A self-hosted UK investment portfolio tracker with live pricing, dividend tracking, income projections, and export to Excel/PDF. Built for income-focused UK portfolios holding gilts, OEICs, investment trusts, and equities.
 
