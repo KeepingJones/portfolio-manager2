@@ -16,6 +16,14 @@ A self-hosted UK investment portfolio tracker with live pricing, dividend tracki
 
 ---
 
+### ⚡ Platform & Modeling Capabilities
+
+| 🇬🇧 Market Coverage | 📈 Yield Curve Engine | 📅 Cashflow Projections | ⚡ Service Latency | 🔒 Architecture |
+|:---:|:---:|:---:|:---:|:---:|
+| **UK Gilts & Equities** | **2Y · 5Y · 10Y · 30Y** | **10–20 Year Horizon** | **< 45ms** (FastAPI) | **100% Self-Hosted & Local** |
+
+---
+
 ## Quick Start
 
 ### 1. Setup Environment
